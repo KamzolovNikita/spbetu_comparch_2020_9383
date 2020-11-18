@@ -1,0 +1,71 @@
+DATA SEGMENT
+        KEEP_CS DW 0 ; для хранения сегмента
+        KEEP_IP DW 0 ; и смещения вектора прерывания
+        HELLO   DB 'Hello Worlds!  $';,10,13,'$'
+DATA ENDS
+
+
+AStack    SEGMENT  STACK
+          DW 12 DUP(?)    ; �⢮����� 12 ᫮� ������
+AStack    ENDS
+
+CODE      SEGMENT
+          ASSUME CS:Code, DS:DATA, SS:AStack
+
+SUBR_INT PROC FAR
+        PUSH AX ; сохранение изменяемых регистров
+        PUSH DX;
+
+        MOV   DX, OFFSET HELLO
+        MOV   AH,9
+        int   21h  ; Вызов функции DOS по прерыванию
+
+        POP DX;
+        POP AX ; восстановление регистров
+        MOV AL, 20H
+        OUT 20H,AL
+        IRET
+SUBR_INT ENDP
+
+
+Main      PROC  FAR
+
+        push  DS       ;\  Сохранение адреса начала PSP в стеке
+        sub   AX,AX    ; > для последующего восстановления по
+        push  AX       ;/  команде ret, завершающей процедуру.
+        mov   AX,DATA             ; Загрузка сегментного
+        mov   DS,AX               ; регистра данных.
+
+        MOV AH, 35H ; функция получения вектора
+        MOV AL, 60H ; номер вектора
+        INT 21H ; возвращает текущее значение вектора прерывания
+        MOV KEEP_IP, BX ; запоминание смещения
+        MOV KEEP_CS, ES ; и сегмента вектора прерывания
+
+        PUSH DS
+        MOV DX, OFFSET SUBR_INT ; смещение для процедуры в DX
+        MOV AX, SEG SUBR_INT ; сегмент процедуры
+        MOV DS, AX ; помещаем в DS
+        MOV AH, 25H ; функция установки вектора
+        MOV AL, 60H ; номер вектора
+        INT 21H ; меняем прерывание
+        POP DS
+
+        int 60H; вызов измененного прерывания
+
+
+        CLI
+        PUSH DS
+        MOV DX, KEEP_IP
+        MOV AX, KEEP_CS
+        MOV DS, AX
+        MOV AH, 25H
+        MOV AL, 1CH
+        INT 21H ; восстанавливаем старый вектор прерывания
+        POP DS
+        STI
+
+        RET
+Main      ENDP
+CODE      ENDS
+          END Main
