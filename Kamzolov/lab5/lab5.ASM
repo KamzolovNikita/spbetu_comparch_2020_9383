@@ -1,7 +1,10 @@
 DATA SEGMENT
         KEEP_CS DW 0 ; для хранения сегмента
         KEEP_IP DW 0 ; и смещения вектора прерывания
-        HELLO   DB 'Hello Worlds!  $';,10,13,'$'
+        KEEP_SS DW 0
+	KEEP_SP DW 0
+	KEEP_AX DW 0
+        HELLO   DB 'Hello Worlds!  $',10,13,'$'
 DATA ENDS
 
 
@@ -9,10 +12,22 @@ AStack    SEGMENT  STACK
           DW 12 DUP(?)    ; �⢮����� 12 ᫮� ������
 AStack    ENDS
 
+BStack SEGMENT STACK
+        DW 12 DUP(?)
+BStack ENDS
+
 CODE      SEGMENT
           ASSUME CS:Code, DS:DATA, SS:AStack
 
 SUBR_INT PROC FAR
+        MOV KEEP_SP, SP
+        MOV KEEP_AX, AX
+        MOV AX, SS
+        MOV KEEP_SS, AX
+
+        MOV AX, KEEP_AX
+
+
         PUSH AX ; сохранение изменяемых регистров
         PUSH DX;
 
@@ -22,6 +37,13 @@ SUBR_INT PROC FAR
 
         POP DX;
         POP AX ; восстановление регистров
+
+        MOV  KEEP_AX, AX
+        MOV SP, KEEP_SP
+        MOV AX, KEEP_SS
+        MOV SS, AX
+        MOV AX, KEEP_AX
+
         MOV AL, 20H
         OUT 20H,AL
         IRET
@@ -52,8 +74,22 @@ Main      PROC  FAR
         POP DS
 
         int 60H; вызов измененного прерывания
+for_loop:
+        mov AH, 01H
+        int 21H
 
+        cmp AL, 13
+        je prer
 
+        cmp AL, 27
+        jne for_loop
+
+        jmp end_l
+prer:
+        int 60H
+        jmp for_loop
+
+end_l:
         CLI
         PUSH DS
         MOV DX, KEEP_IP
