@@ -1,9 +1,7 @@
 DATA SEGMENT
         KEEP_CS DW 0 ; для хранения сегмента
         KEEP_IP DW 0 ; и смещения вектора прерывания
-        KEEP_SS DW 0
-	KEEP_SP DW 0
-	KEEP_AX DW 0
+
         HELLO   DB 'Hello Worlds!  $',10,13,'$'
 DATA ENDS
 
@@ -12,14 +10,19 @@ AStack    SEGMENT  STACK
           DW 12 DUP(?)    ; �⢮����� 12 ᫮� ������
 AStack    ENDS
 
-BStack SEGMENT STACK
-        DW 12 DUP(?)
-BStack ENDS
+
 
 CODE      SEGMENT
           ASSUME CS:Code, DS:DATA, SS:AStack
 
 SUBR_INT PROC FAR
+        jmp start_proc
+        KEEP_SS DW 0
+	KEEP_SP DW 0
+	KEEP_AX DW 0
+        BStack DW 12 DUP(?)
+start_proc:
+
         MOV KEEP_SP, SP
         MOV KEEP_AX, AX
         MOV AX, SS
@@ -27,6 +30,11 @@ SUBR_INT PROC FAR
 
         MOV AX, KEEP_AX
 
+        MOV SP, OFFSET start_proc
+
+
+        MOV AX, seg BStack
+        MOV SS, AX
 
         PUSH AX ; сохранение изменяемых регистров
         PUSH DX;
@@ -96,7 +104,7 @@ end_l:
         MOV AX, KEEP_CS
         MOV DS, AX
         MOV AH, 25H
-        MOV AL, 1CH
+        MOV AL, 60H
         INT 21H ; восстанавливаем старый вектор прерывания
         POP DS
         STI
